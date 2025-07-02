@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "parks",
+  "info": {
+    "singularName": "park",
+    "pluralName": "parks",
+    "displayName": "parks"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "park_name": {
+      "type": "string",
+      "required": false
+    },
+    "park_type": {
+      "type": "string"
+    },
+    "park_name_kana": {
+      "type": "string"
+    },
+    "area_sqm": {
+      "type": "float"
+    },
+    "link_url": {
+      "type": "string"
+    },
+    "image1": {
+      "type": "string"
+    },
+    "image2": {
+      "type": "string"
+    },
+    "lat": {
+      "type": "decimal"
+    },
+    "lon": {
+      "type": "decimal"
+    },
+    "number": {
+      "type": "integer"
+    },
+    "ward": {
+      "type": "string"
+    },
+    "locale_detail": {
+      "type": "string"
+    },
+    "park_hazard_levels": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::parks-hazard-level.parks-hazard-level",
+      "mappedBy": "park"
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "park_hazard_levels",
+  "info": {
+    "singularName": "parks-hazard-level",
+    "pluralName": "parks-hazard-levels",
+    "displayName": "parksHazardLevel"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "equipment_name": {
+      "type": "string"
+    },
+    "park_name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "text"
+    },
+    "comprehesive_evaluation": {
+      "type": "enumeration",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ]
+    },
+    "usability": {
+      "type": "string"
+    },
+    "deterioration": {
+      "type": "string"
+    },
+    "hazard_level": {
+      "type": "integer"
+    },
+    "note": {
+      "type": "text"
+    },
+    "park": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::park.park",
+      "inversedBy": "park_hazard_levels"
+    }
+  }
+}
