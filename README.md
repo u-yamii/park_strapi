@@ -13,205 +13,251 @@
 
 このガイドは、Next.jsで公園マップを開発するために必要なAPIの仕様と実践的な使い方を説明します。
 
+### APIの基本思想とレスポンス構造
+
+StrapiのAPIレスポンスは、常に以下の構造を基本としています。
+
+```json
+{
+  "data": [ /* データが配列の場合 */ ], 
+  "data": { /* データが単一オブジェクトの場合 */ },
+  "meta": { /* ページネーション等の付随情報 */ }
+}
+```
+
+実際のデータ本体は、`data` プロパティの中にあります。さらに、各データは `id` と `attributes` に分かれており、フィールドの値は `attributes` の中に格納されています。
+
+```json
+{
+  "id": 10010,
+  "attributes": {
+    "park_name": "相生公園",
+    "createdAt": "2025-07-04T...",
+    // ... 他のフィールド ...
+  }
+}
+```
+
 ### 認証について
 
 全てのAPIリクエストには、HTTPヘッダーにAPIトークンを含める必要があります。
-Next.jsのデータフェッチライブラリ（SWR, React Query, または `fetch`）のヘッダー設定に以下を追加してください。
+**`.env.local` ファイルでAPIのURLとトークンを管理することを強く推奨します。**
 
-```javascript
-// 例: fetch を使う場合
-const options = {
-  headers: {
-    'Authorization': `Bearer <APIトークン>` // トークンは別途共有
-  }
-};
-
-const response = await fetch('APIのURL', options);```
-**`.env.local` ファイルでの管理を推奨します:**
 ```.env.local
 NEXT_PUBLIC_STRAPI_API_URL=https://parks-strapi-api.onrender.com
-NEXT_PUBLIC_STRAPI_API_TOKEN=<APIトークン>
+NEXT_PUBLIC_STRAPI_API_TOKEN=<別途共有されるAPIトークン>
+```
+
+リクエストの際は、`Authorization` ヘッダーにトークンを設定します。
+
+```javascript
+const response = await fetch(
+  `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/some-endpoint`,
+  {
+    headers: {
+      'Authorization': `Bearer ${process.env.NEXT_PUBLIC_STRAPI_API_TOKEN}`
+    }
+  }
+);
 ```
 
 ---
 
-### 機能実装のためのAPI活用レシピ
+## ✨ 機能実装のためのAPI活用レシピ
 
-#### 🗺️ レシピ1: 地図上に全ての公園のピンを立てる
+### 🗺️ レシピ1: 地図上に全ての公園のピンを立て、色分けする (推奨の統合API)
 
-初期表示で、全ての公園の位置情報を取得し、地図上にマーカーとしてプロットします。
+このアプリのメイン機能である「公園のピン立て」と「ハザードレベルに応じた色分け」は、このエンドポイント一つで完結します。
+データベース側で事前に公園情報とハザードレベルを集計した、読み取り専用の `park_pin_summary` を利用します。
 
-- **目的:** 公園の基本情報（特に緯度・経度）を一覧で取得する。
-- **エンドポイント:** `GET /api/parks`
-- **URL:** `https://parks-strapi-api.onrender.com/api/parks`
-- **ワンポイント:**
-  データ量を最適化するため、必要なフィールドだけを指定して取得するとパフォーマンスが向上します。
-  ```javascript
-  // 例: ID, 公園名, 緯度, 経度のみ取得
-  const fields = ['park_name', 'lat', 'lon'];
-  const query = qs.stringify({ fields }); // qsライブラリ等でクエリを生成
-  const url = `${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/parks?${query}`;
-  ```
-
-- **レスポンスの構造 (抜粋):**
+- **目的:** 地図に表示する全ての公園の位置、名前、およびピンの色分け用データを一括で取得する。
+- **エンドポイント:** `GET /api/park-pin-summary`
+- **レスポンスの構造:**
   ```json
   {
     "data": [
       {
-        "id": 10020,
+        "id": 10010,
         "attributes": {
-          "park_name": "あい公園",
-          "lat": 34.74,
-          "lon": 137.66,
-          // ... 他の基本情報 ...
+          "park_name": "相生公園",
+          "lat": 34.7069954,
+          "lon": 137.748491,
+          "map_pin_color": 2 
         }
       },
-      // ... 他の公園データ ...
-    ],
-    "meta": { /* ページネーション情報 */ }
-  }
-  ```
-  `data` 配列をマップして、各オブジェクトの `id`, `attributes.lat`, `attributes.lon` を使ってピンをプロットします。
-
----
-
-#### 🎨 レシピ2: 公園のピンの色を条件によって変更する
-
-「各公園の最も危険な遊具のハザードレベル」に応じてピンの色を変えるなど、よりリッチな情報を提供します。
-これには、公園情報と関連する遊具情報を一緒に取得する必要があります。
-
-- **目的:** 公園情報と、それに紐づく全ての遊具ハザードレベル情報を一度に取得する。
-- **エンドポイント:** `GET /api/parks?populate=park_hazard_levels`
-  - `populate` クエリパラメータが、リレーション先のデータを一緒に取得するための鍵です。
-- **URL:** `https://parks-strapi-api.onrender.com/api/parks?populate=park_hazard_levels`
-
-- **レスポンスの構造 (抜粋):**
-  ```json
-  {
-    "data": [
-      {
-        "id": 10020,
-        "attributes": {
-          "park_name": "あい公園",
-          "lat": 34.74,
-          "lon": 137.66,
-          "park_hazard_levels": {
-            "data": [
-              {
-                "id": 1,
-                "attributes": {
-                  "equipment_name": "ブランコ",
-                  "hazard_level": 2,
-                  "note": "修繕が必要です。"
-                }
-              },
-              {
-                "id": 2,
-                "attributes": {
-                  "equipment_name": "すべり台",
-                  "hazard_level": 3,
-                  "note": "早急に修繕が必要です。"
-                }
-              }
-            ]
-          }
-        }
-      }
+      // ... 全ての公園のサマリーデータ
     ]
   }
   ```
+  - `map_pin_color`: ピンの色を決定するための数値です。フロントエンド側で「1なら緑、2ならオレンジ、3なら赤」のように解釈して色を適用します。
 
-- **フロントエンドでの実装例:**
+- **フロントエンドでの実装例 (SWRを使用):**
   ```javascript
-  // この公園のピンの色を決定するロジック
-  const parkData = response.data.attributes;
-  const hazardLevels = parkData.park_hazard_levels.data.map(
-    item => item.attributes.hazard_level
-  );
-  
-  // 最も高いハザードレベルを取得
-  const maxHazardLevel = Math.max(...hazardLevels); 
+  import useSWR from 'swr';
 
-  // maxHazardLevelに応じてピンの色を返す
-  if (maxHazardLevel >= 3) return 'red';
-  if (maxHazardLevel === 2) return 'orange';
-  return 'green';
-  ```
+  const fetcher = (url, token) => fetch(url, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  }).then(res => res.json());
 
----
+  function ParkMap() {
+    const { data: summary, error } = useSWR(
+      [`${process.env.NEXT_PUBLIC_STRAPI_API_URL}/api/park-pin-summary`, process.env.NEXT_PUBLIC_STRAPI_API_TOKEN],
+      fetcher
+    );
 
-#### 🖱️ レシピ3: ピンをクリックして公園と遊具の詳細情報を表示する
+    if (error) return <div>Failed to load</div>;
+    if (!summary) return <div>Loading...</div>;
 
-ユーザーが特定のピンをクリックした際に、その公園の詳細情報を取得してモーダルウィンドウなどで表示します。
-
-- **目的:** 特定の`id`を持つ公園とその遊具情報を取得する。
-- **エンドポイント:** `GET /api/parks/:id?populate=park_hazard_levels`
-  - `:id` 部分には、クリックされた公園の`id`を動的に設定します。
-- **URL例:** `https://parks-strapi-api.onrender.com/api/parks/10020?populate=park_hazard_levels`
-  - このエンドポイントは、SWRやReact Queryの `useSWR('/api/parks/' + parkId + '?populate=...')` のような形で使うと、キャッシュも効いて効果的です。
-
-- **レスポンスの構造:** レシピ2のレスポンスの `data` 配列が、単一のオブジェクトになった形です。
-  ```json
-  {
-    "data": {
-      "id": 10020,
-      "attributes": {
-        // ...公園情報と、紐づくpark_hazard_levels配列...
-      }
-    },
-    "meta": {}
+    return (
+      <MapContainer>
+        {summary.data.map(park => (
+          <Marker
+            key={park.id}
+            position={[park.attributes.lat, park.attributes.lon]}
+            icon={getPinIconByColor(park.attributes.map_pin_color)} // ピンの色を返すヘルパー関数
+          >
+            <Popup>{park.attributes.park_name}</Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    );
   }
   ```
 
 ---
 
-### 高度な使い方: フィルタリング
+### 🖱️ レシピ2: ピンをクリックして公園と全遊具の詳細情報を表示する
 
-特定の条件に合致するデータのみを取得したい場合、強力なフィルタリング機能が使えます。
-詳細は[公式ドキュメント](https://docs.strapi.io/dev-docs/api/rest/filters-locale-publication)を参照してください。
+ユーザーが特定のピンをクリックした際に、その公園の完全な詳細情報と、設置されている全遊具のリストを表示します。
 
-- **例1: 特定の文字列が`note`に含まれる遊具を検索する**
-  ```
-  /api/parks-hazard-levels?filters[note][$contains]=修繕が必要
-  ```
+- **目的:** 特定の`id`を持つ公園と、それに紐づく全ての遊具ハザードレベル情報を取得する。
+- **エンドポイント:** `GET /api/parks/:id?populate=park_hazard_levels`
+  - `:id` 部分には、クリックされた公園の`id`を動的に設定します。
+  - `populate` クエリパラメータが、リレーション先のデータを一緒に取得するための鍵です。
 
-- **例2: ハザードレベルが3以上の遊具を持つ公園を検索する (ネストしたフィルタ)**
+- **URL例:** `https://parks-strapi-api.onrender.com/api/parks/10010?populate=park_hazard_levels`
+
+- **レスポンスの構造 (抜粋):**
+  ```json
+  {
+    "data": {
+      "id": 10010,
+      "attributes": {
+        "park_name": "相生公園",
+        "lat": 34.7069954,
+        "lon": 137.748491,
+        // ...公園の他の全フィールド...
+        "park_hazard_levels": {
+          "data": [
+            {
+              "id": 1,
+              "attributes": {
+                "equipment_name": "ブランコ",
+                "hazard_level": 2,
+                "note": "修繕が必要です。"
+                // ...遊具の他の全フィールド...
+              }
+            },
+            // ... 他の遊具データ ...
+          ]
+        }
+      }
+    }
+  }
   ```
-  /api/parks?filters[park_hazard_levels][hazard_level][$gte]=3
-  ```
+- **フロントエンドでの実装:**
+  クリックイベントで公園の `id` を取得し、その `id` を使ってこのAPIを呼び出し、返ってきたデータをモーダルウィンドウ等に表示します。
 
 ---
 
-## バックエンドの運用・管理
+### 🛠️ APIクエリ応用編: パラメータで取得データをカスタマイズする
 
-### デプロイについて
+StrapiのAPIは非常に柔軟です。URLの末尾にクエリパラメータを追加することで、取得するデータを細かく制御できます。
+複雑なクエリは、`qs`ライブラリなどを使ってオブジェクトから生成すると便利です。
 
-このプロジェクトはRenderでホスティングされており、`main` ブランチへのプッシュをトリガーとして**自動デプロイ**が実行されます。
+- **`fields` - フィールドの指定:** 必要なフィールドだけを取得してレスポンスを軽量化します。
+  - `GET /api/parks?fields[0]=park_name&fields[1]=area_sqm`
+  - (qs) `qs.stringify({ fields: ['park_name', 'area_sqm'] })`
 
-1. ローカルで変更を加え、コミットします。
-2. `main` ブランチにプッシュすると、自動で本番環境に反映されます。
+- **`populate` - リレーションデータの取得:** 上記レシピでも使用。ネスト（入れ子）も可能です。
+  - `GET /api/parks?populate=*` (全ての第一階層のリレーションを読み込む)
+  - `GET /api/parks?populate[park_hazard_levels][fields][0]=equipment_name` (遊具の`equipment_name`だけ取得)
+
+- **`filters` - 条件による絞り込み:** 特定の条件に合致するデータのみを取得します。
+  - `GET /api/parks?filters[park_name][$contains]=中央` (公園名に「中央」を含む)
+  - `GET /api/parks-hazard-levels?filters[hazard_level][$gte]=3` (ハザードレベルが3以上)
+
+- **`sort` - 並び替え:**
+  - `GET /api/parks?sort=park_name:asc` (公園名で昇順ソート)
+
+- **`pagination` - ページネーション:**
+  - `GET /api/parks?pagination[page]=2&pagination[pageSize]=25` (2ページ目の25件を取得)
+
+**フィルタリング演算子一覧 (よく使うもの):**
+| 演算子 | 説明 | 例 |
+| :--- | :--- | :--- |
+| `$eq` | 等しい | `filters[park_name][$eq]=あい公園` |
+| `$ne` | 等しくない | `filters[hazard_level][$ne]=1` |
+| `$lt` | より小さい | `filters[hazard_level][$lt]=3` |
+| `$lte`| 以下 | `filters[hazard_level][$lte]=2` |
+| `$gt` | より大きい | `filters[hazard_level][$gt]=2` |
+| `$gte`| 以上 | `filters[hazard_level][$gte]=3` |
+| `$in` | いずれかに合致 | `filters[id][$in][0]=10010&filters[id][$in][1]=10020` |
+| `$contains` | (部分)文字列を含む | `filters[note][$contains]=修繕` |
+
+---
+
+## 📚 APIデータ構造 (テーブル定義)
+
+APIから返ってくるデータのフィールド名と型の一覧です。
+
+#### `park_info` (エンドポイント: `/api/parks`)
+| フィールド名 | データ型 | 説明 |
+| :--- | :--- | :--- |
+| `id` | `integer` | 市が定める公園の管理番号 (主キー) |
+| `park_name` | `string` | 公園名 |
+| `park_name_kana` | `string` | 公園名のカナ |
+| `lat` | `double` | 緯度 |
+| `lon` | `double` | 経度 |
+| `park_type` | `string` | 公園種別 (街区公園など) |
+| `area_sqm` | `double` | 面積(㎡) |
+| `link_url` | `string` | 関連URL |
+| `image1`, `image2`| `string` | 画像URL |
+| `number` | `integer`| (用途確認中) |
+| `ward` | `string` | 区 |
+| `locale` | `string` | (用途確認中) |
+
+#### `park_hazard_levels` (エンドポイント: `/api/parks-hazard-levels`)
+| フィールド名 | データ型 | 説明 |
+| :--- | :--- | :--- |
+| `id` | `integer`| このレコードのユニークID (主キー) |
+| `equipment_id` | `integer` | 遊具の管理番号 |
+| `equipment_name`| `string` | 遊具名 |
+| `park_name` | `string` | (参考用) 公園名 |
+| `address` | `text` | (参考用) 住所 |
+| `comprehensive_evaluation` | `text` | 総合評価 |
+| `usability` | `string` | 使用可否 |
+| `deterioration` | `string` | 劣化状況 |
+| `hazard_level` | `integer` | ハザードレベル |
+| `note` | `text` | 特記事項 |
+| `park_id` | `integer` | 関連する `park_info` の `id` |
+
+#### `park_pin_summary` (エンドポイント: `/api/park-pin-summary`)
+※ このエンドポイントは読み取り専用です。
+| フィールド名 | データ型 | 説明 |
+| :--- | :--- | :--- |
+| `id` | `integer` | 公園の管理番号 (主キー) |
+| `park_name` | `string` | 公園名 |
+| `lat` | `double` | 緯度 |
+| `lon` | `double` | 経度 |
+| `map_pin_color` | `integer`| 地図のピンの色を示す数値 (例: 1=安全, 2=注意, 3=危険) |
+
 
 ### 管理画面
+- **URL:** `https://parks-strapi-api.onrender.com/admin`
 
-コンテンツの追加や編集は、Strapiの管理画面から行います。
-- **本番環境 管理画面URL:** `https://parks-strapi-api.onrender.com/admin`
-
----
-
-## ローカル開発環境のセットアップ
-
-バックエンドのコードを修正する場合は、以下の手順でローカル環境を構築します。
-
-1.  **リポジトリをクローン:** `git clone https://github.com/u-yamii/park_strapi.git`
-2.  **依存関係をインストール:** `npm install` (または `yarn`)
-3.  **`.env` ファイルを作成:** 別途共有される情報を元に、データベース接続情報等を設定します。
-4.  **開発サーバーを起動:** `npm run develop` (または `yarn develop`)
-
----
-
-### データ構造について
-
-APIレスポンスの正確な構造（フィールド名、型など）は、`schema.json`ファイルで定義されています。
-
-- **公園:** `src/api/park/content-types/park/schema.json`
-- **遊具ハザードレベル:** `src/api/parks-hazard-level/content-types/parks-hazard-level/schema.json`
+### ローカル開発
+1.  **クローン:** `git clone https://github.com/u-yamii/park_strapi.git`
+2.  **依存関係インストール:** `npm install`
+3.  **`.env` ファイル作成:** `.env.example` をコピーし、共有された値を設定。
+4.  **起動:** `npm run develop`
