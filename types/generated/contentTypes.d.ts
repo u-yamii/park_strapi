@@ -373,15 +373,47 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   };
 }
 
-export interface ApiParkPark extends Struct.CollectionTypeSchema {
-  collectionName: 'parks';
+export interface ApiParkPinSummaryParkPinSummary
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'park_pin_summaries';
   info: {
-    displayName: 'parks';
+    displayName: 'park_pin_summary';
+    pluralName: 'park-pin-summaries';
+    singularName: 'park-pin-summary';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    lat: Schema.Attribute.Float;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::park-pin-summary.park-pin-summary'
+    > &
+      Schema.Attribute.Private;
+    lon: Schema.Attribute.Float;
+    map_pin_color: Schema.Attribute.Integer;
+    park_name: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiParkPark extends Struct.CollectionTypeSchema {
+  collectionName: 'park_info';
+  info: {
+    displayName: 'park_info';
     pluralName: 'parks';
     singularName: 'park';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
     area_sqm: Schema.Attribute.Float;
@@ -422,7 +454,7 @@ export interface ApiParksHazardLevelParksHazardLevel
     singularName: 'parks-hazard-level';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
     address: Schema.Attribute.Text;
@@ -959,6 +991,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::park-pin-summary.park-pin-summary': ApiParkPinSummaryParkPinSummary;
       'api::park.park': ApiParkPark;
       'api::parks-hazard-level.parks-hazard-level': ApiParksHazardLevelParksHazardLevel;
       'plugin::content-releases.release': PluginContentReleasesRelease;

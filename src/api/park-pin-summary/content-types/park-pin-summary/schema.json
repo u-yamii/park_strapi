@@ -1,0 +1,27 @@
+{
+  "kind": "collectionType",
+  "collectionName": "park_pin_summaries",
+  "info": {
+    "singularName": "park-pin-summary",
+    "pluralName": "park-pin-summaries",
+    "displayName": "park_pin_summary"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "park_name": {
+      "type": "string"
+    },
+    "lat": {
+      "type": "float"
+    },
+    "lon": {
+      "type": "float"
+    },
+    "map_pin_color": {
+      "type": "integer"
+    }
+  }
+}

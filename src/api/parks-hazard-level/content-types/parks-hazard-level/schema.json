@@ -7,7 +7,7 @@
     "displayName": "parksHazardLevel"
   },
   "options": {
-    "draftAndPublish": true
+    "draftAndPublish": false
   },
   "pluginOptions": {},
   "attributes": {
