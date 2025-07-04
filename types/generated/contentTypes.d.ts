@@ -458,7 +458,7 @@ export interface ApiParksHazardLevelParksHazardLevel
   };
   attributes: {
     address: Schema.Attribute.Text;
-    comprehesive_evaluation: Schema.Attribute.Enumeration<['A', 'B', 'C', 'D']>;
+    comprehensive_evaluation: Schema.Attribute.String;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

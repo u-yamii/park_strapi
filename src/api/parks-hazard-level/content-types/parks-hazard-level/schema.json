@@ -17,17 +17,11 @@
     "park_name": {
       "type": "string"
     },
+    "comprehensive_evaluation": {
+      "type": "string"
+    },
     "address": {
       "type": "text"
-    },
-    "comprehesive_evaluation": {
-      "type": "enumeration",
-      "enum": [
-        "A",
-        "B",
-        "C",
-        "D"
-      ]
     },
     "usability": {
       "type": "string"
