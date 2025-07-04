@@ -1,13 +1,13 @@
 {
   "kind": "collectionType",
-  "collectionName": "parks",
+  "collectionName": "park_info",
   "info": {
     "singularName": "park",
     "pluralName": "parks",
-    "displayName": "parks"
+    "displayName": "park_info"
   },
   "options": {
-    "draftAndPublish": true
+    "draftAndPublish": false
   },
   "pluginOptions": {},
   "attributes": {
