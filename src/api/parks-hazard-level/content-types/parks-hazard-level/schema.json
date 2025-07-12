@@ -32,6 +32,9 @@
     "hazard_level": {
       "type": "integer"
     },
+    "equipment_type_id": {
+      "type": "integer"
+    },
     "note": {
       "type": "text"
     },

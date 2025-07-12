@@ -464,6 +464,7 @@ export interface ApiParksHazardLevelParksHazardLevel
       Schema.Attribute.Private;
     deterioration: Schema.Attribute.String;
     equipment_name: Schema.Attribute.String;
+    equipment_type_id: Schema.Attribute.Integer;
     hazard_level: Schema.Attribute.Integer;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
